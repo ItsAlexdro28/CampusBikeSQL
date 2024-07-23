@@ -96,3 +96,88 @@ BEGIN
 END //
 
 DELIMITER ;
+
+DELIMITER //
+
+CREATE PROCEDURE CrearVenta(
+    IN p_ClienteID INT
+)
+BEGIN
+    DECLARE nueva_venta_id INT;
+    DECLARE fecha_venta DATE;
+    DECLARE total_venta DECIMAL(10, 2);
+
+    -- Obtener la fecha actual para la venta
+    SET fecha_venta = CURDATE();
+
+    -- Insertar la nueva venta y obtener el ID generado
+    INSERT INTO ventas (fecha, cliente_id, total)
+    VALUES (fecha_venta, p_ClienteID, 0); -- El total se actualizará posteriormente
+
+    -- Obtener el ID de la venta insertada
+    SET nueva_venta_id = LAST_INSERT_ID();
+
+    -- Devolver el ID de la nueva venta
+    SELECT nueva_venta_id AS venta_id;
+END //
+
+CREATE PROCEDURE AgregarBicicletaAVenta(
+    IN p_VentaID INT,
+    IN p_BicicletaID INT,
+    IN p_Cantidad INT
+)
+BEGIN
+    DECLARE precio_unitario DECIMAL(10, 2);
+
+    -- Obtener el precio unitario de la bicicleta
+    SELECT precio INTO precio_unitario
+    FROM bicicletas
+    WHERE id = p_BicicletaID;
+
+    -- Insertar la bicicleta en los detalles de la venta
+    INSERT INTO detalles_ventas (venta_id, bicicleta_id, cantidad, precio_unitario)
+    VALUES (p_VentaID, p_BicicletaID, p_Cantidad, precio_unitario);
+
+    -- Actualizar el total de la venta
+    UPDATE ventas
+    SET total = total + (precio_unitario * p_Cantidad)
+    WHERE id = p_VentaID;
+
+    -- Devolver mensaje de éxito
+    SELECT CONCAT('Bicicleta agregada a la venta ID ', p_VentaID) AS mensaje;
+END //
+
+CREATE PROCEDURE ConfirmarVenta(
+    IN p_confirmacion VARCHAR(1), -- Cambiado a VARCHAR(1) para simplificar la confirmación
+    IN p_VentaID INT
+)
+BEGIN
+    IF p_confirmacion = 'Y' THEN
+        -- Actualizar el inventario de bicicletas
+        UPDATE bicicletas b
+        INNER JOIN (
+            SELECT bicicleta_id, SUM(cantidad) AS cantidad_vendida
+            FROM detalles_ventas
+            WHERE venta_id = p_VentaID
+            GROUP BY bicicleta_id
+        ) dv ON b.id = dv.bicicleta_id
+        SET b.stock = b.stock - dv.cantidad_vendida;
+
+        -- Devolver mensaje de confirmación
+        SELECT CONCAT('Venta ID ', p_VentaID, ' confirmada y el inventario actualizado') AS mensaje;
+        
+    ELSEIF p_confirmacion = 'n' THEN
+        -- Devolver mensaje de cancelación
+        SELECT CONCAT('Venta ID ', p_VentaID, ' cancelada') AS mensaje;
+
+        -- Eliminar la venta y sus detalles
+        DELETE FROM ventas WHERE id = p_VentaID;
+        DELETE FROM detalles_ventas WHERE venta_id = p_VentaID;
+        
+    ELSE
+        -- Devolver mensaje de error si la confirmación no es válida
+        SELECT 'Confirmación no válida. Utilizar "Y" para confirmar o "n" para cancelar.' AS mensaje;
+    END IF;
+END //
+
+DELIMITER ;
