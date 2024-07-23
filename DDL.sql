@@ -5,13 +5,13 @@ CREATE DATABASE Campusbike;
 USE Campusbike;
 
 CREATE TABLE paises (
-    id int UNIQUE,
+    id int AUTO_INCREMENT,
     nombre VARCHAR(30) NOT NULL,
     CONSTRAINT pk_paises_id PRIMARY KEY (id)
 );
 
 CREATE TABLE ciudades (
-    id int UNIQUE,
+    id int AUTO_INCREMENT,
     nombre VARCHAR(30) NOT NULL,
     pais_id int,
     CONSTRAINT pk_ciudades_id PRIMARY KEY (id),
@@ -19,13 +19,13 @@ CREATE TABLE ciudades (
 );
 
 CREATE TABLE marcas (
-    id int UNIQUE,
+    id int AUTO_INCREMENT,
     nombre VARCHAR(30) NOT NULL,
     CONSTRAINT pk_marcas_id PRIMARY KEY (id)
 );
 
 CREATE TABLE modelos (
-    id int UNIQUE,
+    id int AUTO_INCREMENT,
     marca_id int,
     modelo VARCHAR(30) NOT NULL,
     CONSTRAINT pk_modelos_id PRIMARY KEY (id),
@@ -33,7 +33,7 @@ CREATE TABLE modelos (
 );
 
 CREATE TABLE bicicletas (
-    id int UNIQUE,
+    id int AUTO_INCREMENT,
     modelo int,
     precio DECIMAL(10, 2) NOT NULL,
     stock int NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE bicicletas (
 );
 
 CREATE TABLE clientes (
-    id int UNIQUE, 
+    id int AUTO_INCREMENT, 
     nombre VARCHAR(30) NOT NULL,
     correo_electronico VARCHAR(50) UNIQUE NOT NULL,
     telefono VARCHAR(13) NOT NULL,
@@ -52,7 +52,7 @@ CREATE TABLE clientes (
 );
 
 CREATE TABLE ventas (
-    id int UNIQUE,
+    id int AUTO_INCREMENT,
     fecha DATE NOT NULL,
     cliente_id int,
     total DECIMAL(10, 2) NOT NULL,
@@ -61,7 +61,7 @@ CREATE TABLE ventas (
 );
 
 CREATE TABLE detalles_ventas (
-    id int UNIQUE,
+    id int AUTO_INCREMENT,
     venta_id int,
     bicicleta_id int,
     cantidad int NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE proveedores (
 CREATE TABLE repuestos (
     id int,
     nombre VARCHAR(40) NOT NULL,
-    descripcion TEXT,
+    descripcion VARCHAR(80),
     precio DECIMAL(10, 2) NOT NULL,
     stock int NOT NULL,
     proveedor_id int,
