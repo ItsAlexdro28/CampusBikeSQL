@@ -30,7 +30,8 @@ CREATE PROCEDURE AgregarBicicleta(
 BEGIN
     INSERT INTO bicicletas (modelo, precio, stock)
     VALUES (b_Modelo, b_Precio, b_Stock);
-END //
+END;
+//
 
 DROP PROCEDURE IF EXISTS ActualizarBicicleta;
 CREATE PROCEDURE ActualizarBicicleta(
@@ -46,7 +47,8 @@ BEGIN
     IF ROW_COUNT() = 0 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Bicicleta no encontrada';
 	END IF;
-END //
+END;
+//
 
 DROP PROCEDURE IF EXISTS EliminarBicicleta;
 CREATE PROCEDURE EliminarBicicleta(
@@ -59,15 +61,16 @@ BEGIN
     IF ROW_COUNT() = 0 THEN
 		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Bicicleta no encontrada';
 	END IF;
-END //
+END;
+//
 
 DELIMITER ;
-
-DELIMITER //
 ```
 ### Caso de uso 1.2: Registro de Ventas
 **Descripción:** Este caso de uso describe el proceso de registro de una venta de bicicletas incluyendo la creación de una nueva venta, la selección de bicicletas vendidas y el cálculo del total de la venta 
 ```sql
+DELIMITER //
+
 DROP PROCEDURE IF EXISTS CrearVenta;
 CREATE PROCEDURE CrearVenta(
     IN v_ClienteID INT
@@ -85,7 +88,8 @@ BEGIN
     SET nueva_venta_id = LAST_INSERT_ID();
 
     SELECT nueva_venta_id AS venta_id;
-END //
+END;
+//
 
 DROP PROCEDURE IF EXISTS AgregarBicicletaAVenta;
 CREATE PROCEDURE AgregarBicicletaAVenta(
@@ -107,8 +111,9 @@ BEGIN
     SET total = total + (n_precio_unitario * v_Cantidad)
     WHERE id = v_VentaID;
 
-    SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID) AS mensaje;
-END //
+    SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID, ) AS mensaje;
+END;
+//
 
 DROP PROCEDURE IF EXISTS ConfirmarVenta;
 CREATE PROCEDURE ConfirmarVenta(
@@ -140,13 +145,14 @@ BEGIN
     ELSE
         SELECT 'Confirmación no válida. Utilizar "Y" para confirmar o "n" para cancelar.' AS mensaje;
     END IF;
-END //
+END;
+//
 
 DELIMITER ;
 
 CALL CrearVenta(1);
-CALL AgregarBicicletaAVenta(1, 2, 3);
-CALL ConfirmarVenta('Y', 1);
+CALL AgregarBicicletaAVenta(5, 2, 3);
+CALL ConfirmarVenta('n', 5);
 ```
 ### Caso de uso 1.3: Gestión de Proveedores y Repuestos
 **Descripción:** Este caso de uso descrube cómo el sistema gensitona la información de proveedores y repuestos, permitiendo agregar nuevos proveedores y repuestos, actualizar la información existente y eliminar proveedores y repuesots que ya no están activos
@@ -308,7 +314,8 @@ BEGIN
     -- WHERE id = c_CompraID;
 
     SELECT CONCAT('Repuesto agregado a la compra ID ', c_CompraID) AS mensaje;
-END //
+END;
+//
 
 DELIMITER ;
 
@@ -320,29 +327,21 @@ CALL AgregarRepuestoACompra(1, 1, 2);
 **Descripción:** Este caso de uso describe cómo el sistema permite a un usuario consultar las bicicletas más vendidas por cada marca.
 ```sql
 DELIMITER //
-
 DROP PROCEDURE IF EXISTS BicicletasVendidasXMarca;
 CREATE PROCEDURE BicicletasVendidasXMarca()
 BEGIN
-    SELECT ma.nombre AS marca, mo.modelo AS modelo
-    FROM marcas ma
-    JOIN modelos mo ON ma.id = mo.marca_id
-    JOIN bicicletas b ON mo.id = b.modelo
-    WHERE mo.id IN (
-        SELECT modelo_vendido_id
-        FROM (
-            SELECT mosub.id as modelo_vendido_id , COUNT(*) as modelos_vendidos
-            FROM modelos mosub
-            JOIN bicicletas bisub ON mosub.id = bisub.modelo
-            GROUP BY mosub.id
-        ) as ventas_de_modelos
-        WHERE mo.id = ventas_de_modelos.id
-        ORDER BY modelos_vendidos DESC
-        LIMIT 1
-    );
+    SELECT sub.marca, sub.modelo, MAX(sub.total_compras) AS max_total_compras
+    FROM (
+        SELECT ma.nombre AS marca, mo.modelo AS modelo, SUM(dv.cantidad) AS total_compras
+        FROM marcas ma
+        JOIN modelos mo ON ma.id = mo.marca_id
+        JOIN bicicletas bi ON mo.id = bi.modelo
+        JOIN detalles_ventas dv ON bi.id = dv.bicicleta_id
+        GROUP BY ma.nombre, mo.modelo
+    ) AS sub
+    GROUP BY sub.marca, sub.modelo;
 END;
 //
-
 DELIMITER ;
 
 CALL BicicletasVendidasXMarca();
