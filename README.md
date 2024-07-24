@@ -14,17 +14,227 @@ base de datos para la gestion eficiente de la informaicon de este negocio
 permitiendo agregar nuevas bicicletas, actualizar la información existente y eliminar bicicletas que
 ya no están disponibles.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS AgregarBicicleta;
+CREATE PROCEDURE AgregarBicicleta(
+    IN b_Modelo INT,
+    IN b_Precio DECIMAL(10, 2),
+    IN b_Stock INT
+)
+BEGIN
+    INSERT INTO bicicletas (modelo, precio, stock)
+    VALUES (b_Modelo, b_Precio, b_Stock);
+END //
+
+DROP PROCEDURE IF EXISTS ActualizarBicicleta;
+CREATE PROCEDURE ActualizarBicicleta(
+    IN b_id INT,
+    IN b_Precio DECIMAL(10, 2),
+    IN b_Stock INT
+)
+BEGIN
+    UPDATE bicicletas 
+    SET precio = b_Precio, stock = b_Stock
+    WHERE id = b_id;
+    
+    IF ROW_COUNT() = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Bicicleta no encontrada';
+	END IF;
+END //
+
+DROP PROCEDURE IF EXISTS EliminarBicicleta;
+CREATE PROCEDURE EliminarBicicleta(
+    IN b_id INT
+)
+BEGIN
+    DELETE FROM bicicletas
+    WHERE id = b_id;
+    
+    IF ROW_COUNT() = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Bicicleta no encontrada';
+	END IF;
+END //
+
+DELIMITER ;
+
+DELIMITER //
 ```
 ### Caso de uso 1.2: Registro de Ventas
 **Descripción:** Este caso de uso describe el proceso de registro de una venta de bicicletas incluyendo la creación de una nueva venta, la selección de bicicletas vendidas y el cálculo del total de la venta 
 ```sql
+DROP PROCEDURE IF EXISTS CrearVenta;
+CREATE PROCEDURE CrearVenta(
+    IN v_ClienteID INT
+)
+BEGIN
+    DECLARE nueva_venta_id INT;
+    DECLARE fecha_venta DATE;
+    DECLARE total_venta DECIMAL(10, 2);
 
+    SET fecha_venta = CURDATE();
+
+    INSERT INTO ventas (fecha, cliente_id, total)
+    VALUES (fecha_venta, v_ClienteID, 0);
+
+    SET nueva_venta_id = LAST_INSERT_ID();
+
+    SELECT nueva_venta_id AS venta_id;
+END //
+
+DROP PROCEDURE IF EXISTS AgregarBicicletaAVenta;
+CREATE PROCEDURE AgregarBicicletaAVenta(
+    IN v_VentaID INT,
+    IN v_BicicletaID INT,
+    IN v_Cantidad INT
+)
+BEGIN
+    DECLARE n_precio_unitario DECIMAL(10, 2);
+
+    SELECT precio INTO n_precio_unitario
+    FROM bicicletas
+    WHERE id = v_BicicletaID;
+
+    INSERT INTO detalles_ventas (venta_id, bicicleta_id, cantidad, precio_unitario)
+    VALUES (v_VentaID, v_BicicletaID, v_Cantidad, n_precio_unitario);
+
+    UPDATE ventas
+    SET total = total + (n_precio_unitario * v_Cantidad)
+    WHERE id = v_VentaID;
+
+    IF ROW_COUNT() = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Venta no encontrada';
+	END IF;
+
+    SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID) AS mensaje;
+END //
+
+DROP PROCEDURE IF EXISTS ConfirmarVenta;
+CREATE PROCEDURE ConfirmarVenta(
+    IN v_confirmacion VARCHAR(1),
+    IN v_VentaID INT
+)
+BEGIN
+    IF v_confirmacion = 'Y' THEN
+
+        UPDATE bicicletas b
+        INNER JOIN (
+            SELECT bicicleta_id, SUM(cantidad) AS cantidad_vendida
+            FROM detalles_ventas
+            WHERE venta_id = v_VentaID
+            GROUP BY bicicleta_id
+        ) dv ON b.id = dv.bicicleta_id
+        SET b.stock = b.stock - dv.cantidad_vendida;
+
+
+        SELECT CONCAT('Venta ID ', v_VentaID, ' confirmada y el inventario actualizado') AS mensaje;
+        
+    ELSEIF v_confirmacion = 'n' THEN
+
+        SELECT CONCAT('Venta ID ', v_VentaID, ' cancelada') AS mensaje;
+
+        DELETE FROM detalles_ventas WHERE venta_id = v_VentaID;
+        DELETE FROM ventas WHERE id = v_VentaID;
+        
+    ELSE
+        SELECT 'Confirmación no válida. Utilizar "Y" para confirmar o "n" para cancelar.' AS mensaje;
+    END IF;
+END //
+
+DELIMITER ;
 ```
 ### Caso de uso 1.3: Gestión de Proveedores y Repuestos
-**Descripción:** Este caso de uyso descrube cómo el sistema gensitona la información de proveedores y repuestos, permitiendo agregar nuevos proveedores y repuestos, actualizar la información existente y eliminar proveedores y repuesots que ya no están activos
-```sql
+**Descripción:** Este caso de uso descrube cómo el sistema gensitona la información de proveedores y repuestos, permitiendo agregar nuevos proveedores y repuestos, actualizar la información existente y eliminar proveedores y repuesots que ya no están activos
 
+```sql
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS AgregarProveedor;
+CREATE PROCEDURE AgregarProveedor(
+	IN p_Nombre VARCHAR(30), IN p_Contacto VARCHAR(30), IN p_Telefono VARCHAR(13), IN p_Correo VARCHAR(30), IN p_Ciudad INT
+)
+BEGIN
+	INSERT INTO proveedores (nombre, contacto, telefono, correo_electronico, ciudad_id)
+	VALUES (p_Nombre, p_Contacto, p_Telefono, p_Correo, p_Ciudad);
+END;
+//
+
+DROP PROCEDURE IF EXISTS AgregarRepuesto;
+CREATE PROCEDURE AgregarRepuesto(
+	IN r_Nombre VARCHAR(40), IN r_Descripcion VARCHAR(80), IN r_Precio DECIMAL(10,2), IN r_Stock INT, IN r_Proveedor INT
+)
+BEGIN
+	INSERT INTO repuestos (nombre, descripcion, precio, stock, proveedor_id)
+	VALUES (r_Nombre, r_Descripcion, r_Precio, r_Stock, r_Proveedor);
+END;
+//
+
+DROP PROCEDURE IF EXISTS ActualizarProveedor;
+CREATE PROCEDURE ActualizarProveedor(
+	IN p_ProveedorID INT, IN p_Nombre VARCHAR(50), IN p_Contacto VARCHAR(30), IN p_Telefono VARCHAR(13), IN p_Correo VARCHAR(30), IN p_Ciudad INT
+)
+BEGIN
+	UPDATE proveedores
+	SET nombre = p_Nombre, contacto = p_Contacto, telefono = p_Telefono, correo_electronico = p_Correo, ciudad_id = p_Ciudad
+	WHERE id = p_ProveedorID;
+	
+	IF ROW_COUNT() = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Proveedor no encontrado';
+	END IF;
+END;
+//
+
+DROP PROCEDURE IF EXISTS ActualizarRepuesto;
+CREATE PROCEDURE ActualizarRepuesto(
+	IN r_RepuestoID INT, IN r_Nombre VARCHAR(40), IN r_Descripcion VARCHAR(80), IN r_Precio DECIMAL(10,2), IN r_Stock INT, IN r_Proveedor INT
+)
+BEGIN
+	UPDATE repuestos
+	SET nombre = r_Nombre, descripcion = r_Descripcion, precio = r_Precio, stock = r_Stock, proveedor_id = r_Proveedor
+	WHERE id = r_RepuestoID;
+	
+	IF ROW_COUNT() = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Repuesto no encontrado';
+	END IF;
+END;
+//
+
+DROP PROCEDURE IF EXISTS EliminarProveedor;
+CREATE PROCEDURE EliminarProveedor(
+	IN p_id INT
+)
+BEGIN
+	DELETE FROM proveedores
+	WHERE id = p_id;
+	
+	IF ROW_COUNT() = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Proveedor no encontrado';
+	END IF;
+END;
+//
+
+DROP PROCEDURE IF EXISTS EliminarRepuesto;
+CREATE PROCEDURE EliminarRepuesto(
+	IN r_id INT
+)
+BEGIN
+	DELETE FROM repuestos
+	WHERE id = r_id;
+	
+	IF ROW_COUNT() = 0 THEN
+		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Repuesto no encontrado';
+	END IF;
+END;
+//
+
+DELIMITER ;
+
+CALL AgregarProveedor('Proveedor6', 'Contacto6', '123456789', 'correo1@example.com', 1);
+CALL AgregarRepuesto('Repuesto7', 'Descripcion7', 100.00, 50, 1);
+CALL ActualizarProveedor(4, 'Proveedor2', 'Contacto2', '987654321', 'correo2@example.com', 2);
+CALL ActualizarRepuesto(4, 'Repuesto2', 'Descripcion2', 150.00, 30, 2);
+CALL EliminarProveedor(4);
+CALL EliminarRepuesto(4);
 ```
 ### Caso de uso 1.4: Consulta de Historial de Ventas por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema permite a un usuario consultar el historial de ventas de un cliente específico, mostrando todas las compras realizadas por el cliente y los detalles de cada venta
@@ -84,7 +294,7 @@ actualizar el stock de repuestos.
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los clientes que han realizado compras dentro de un rango de fechas específico.
 ```sql
 
-``` 
+```
 ## Implementar Procedimientos Almacenados
 ### Caso de Uso 4.1: Actualización de Inventario de Bicicletas
 **Descripción:** Este caso de uso describe cómo el sistema actualiza el inventario de bicicletas cuando se realiza una venta.

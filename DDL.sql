@@ -72,7 +72,7 @@ CREATE TABLE detalles_ventas (
 );
 
 CREATE TABLE proveedores (
-    id int,
+    id int AUTO_INCREMENT,
     nombre VARCHAR(50) NOT NULL,
     contacto VARCHAR(30) NOT NULL,
     telefono VARCHAR(13) NOT NULL,
@@ -83,7 +83,7 @@ CREATE TABLE proveedores (
 );
 
 CREATE TABLE repuestos (
-    id int,
+    id int AUTO_INCREMENT,
     nombre VARCHAR(40) NOT NULL,
     descripcion VARCHAR(80),
     precio DECIMAL(10, 2) NOT NULL,
@@ -94,7 +94,7 @@ CREATE TABLE repuestos (
 );
 
 CREATE TABLE compras (
-    id int,
+    id int AUTO_INCREMENT,
     fecha DATE NOT NULL,
     proveedor_id int,
     total DECIMAL(10, 2) NOT NULL,
@@ -103,7 +103,7 @@ CREATE TABLE compras (
 );
 
 CREATE TABLE detalles_compras (
-    id int,
+    id int AUTO_INCREMENT,
     compra_id int,
     repuesto_id int,
     cantidad int NOT NULL,
