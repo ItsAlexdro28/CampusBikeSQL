@@ -8,6 +8,10 @@ base de datos para la gestion eficiente de la informaicon de este negocio
 - [Almacenados](#implementar-procedimientos-almacenados)
 - [Funciones Resumen](#funciones-resumen) 
 
+## Diagrama ER
+
+![Diagrama hecho en STARUML](https://media.discordapp.net/attachments/1225410560997458061/1265707007474925670/imagen.png?ex=66a27d02&is=66a12b82&hm=d203898df1214cb4a129a4dc99cb04051895a168931b3802300e2df09f7aec59&=&format=webp&quality=lossless&width=1113&height=668)
+
 ## Casos de uso
 
 ### Caso de uso 1.1: Gestión de Inventario de Bicicletas
@@ -369,22 +373,73 @@ CALL BicicletasVendidasXMarca();
 ### Caso de Uso 3.1: Consulta de Ventas por Ciudad
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar el total de ventas realizadas en cada ciudad.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS VentasPorCiudad; 
+CREATE PROCEDURE VentasPorCiudad()
+BEGIN
+    SELECT cdes.nombre as ciudades, COUNT(clnt.id) as Nro_Ventas
+    FROM ciudades cdes
+    INNER JOIN clientes clnt ON cdes.id = clnt.ciudad_id
+    GROUP BY cdes.nombre;
+END; 
+// 
+DELIMITER ;
 ```
 ### Caso de Uso 3.2: Consulta de Proveedores por País
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los proveedores agrupados por país.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ProveedoresPorPais; 
+CREATE PROCEDURE ProveedoresPorPais()
+BEGIN
+    SELECT pss.nombre as paises, COUNT(pvdr.id) as Nro_Proveedores
+    FROM paises pss
+    INNER JOIN ciudades cdes ON pss.id = cdes.pais_id
+    INNER JOIN proveedores pvdr ON cdes.id = pvdr.ciudad_id
+    GROUP BY pss.nombre;
+END;
+//
+DELIMITER ;
 ```
 ### Caso de Uso 3.3: Compras de Repuestos por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar el total de repuestos comprados a cada proveedor.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS RepuestosPorProveedor;
+CREATE PROCEDURE RepuestosPorProveedor()
+BEGIN
+    SELECT pvdr.nombre as proveedores, COUNT(rpst.id) as Nro_Repuestos
+    FROM proveedores pvdr
+    INNER JOIN repuestos rpst ON pvdr.id = rpst.proveedor_id
+    GROUP BY pvdr.nombre;
+END;
+//
+DELIMITER ;
 ```
 ### Caso de Uso 3.4: Clientes con Ventas en un Rango de Fechas
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los clientes que han realizado compras dentro de un rango de fechas específico.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS VentasEnRango;
+CREATE PROCEDURE VentasEnRango(
+    IN v_fecha_inicio DATE,
+    IN v_fecha_fin DATE
+)
+BEGIN
+    SELECT clnt.nombre as cliente, COUNT(vnts.id) as Nro_Ventas
+    FROM clientes clnt
+    INNER JOIN ventas vnts ON clnt.id = vnts.cliente_id
+    WHERE vnts.fecha BETWEEN v_fecha_inicio AND v_fecha_fin
+    GROUP BY clnt.nombre;
+END;
+//
+DELIMITER ;
+
+CALL VentasEnRango('2024-07-01','2024-07-02');
 ```
 ## Implementar Procedimientos Almacenados
 ### Caso de Uso 4.1: Actualización de Inventario de Bicicletas
