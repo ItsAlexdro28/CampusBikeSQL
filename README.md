@@ -102,10 +102,6 @@ BEGIN
     SET total = total + (n_precio_unitario * v_Cantidad)
     WHERE id = v_VentaID;
 
-    IF ROW_COUNT() = 0 THEN
-		SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Venta no encontrada';
-	END IF;
-
     SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID) AS mensaje;
 END //
 
@@ -142,6 +138,10 @@ BEGIN
 END //
 
 DELIMITER ;
+
+CALL CrearVenta(1);
+CALL AgregarBicicletaAVenta(1, 2, 3);
+CALL ConfirmarVenta('Y', 1);
 ```
 ### Caso de uso 1.3: Gestión de Proveedores y Repuestos
 **Descripción:** Este caso de uso descrube cómo el sistema gensitona la información de proveedores y repuestos, permitiendo agregar nuevos proveedores y repuestos, actualizar la información existente y eliminar proveedores y repuesots que ya no están activos
@@ -270,7 +270,45 @@ CALL ListarDetallesVenta(1);
 proveedores, permitiendo registrar una nueva compra, especificar los repuestos comprados y
 actualizar el stock de repuestos.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS AgregarCompra;
+CREATE PROCEDURE AgregarCompra(
+	IN c_ProveedorID INT, IN c_Fecha DATE, IN c_Total DECIMAL(10,2)
+)
+BEGIN
+	INSERT INTO compras (fecha,proveedor_id,total)
+	VALUES (c_Fecha, c_ProveedorID, c_Total);
+END;
+//
+
+DROP PROCEDURE IF EXISTS AgregarRepuestoACompra;
+CREATE PROCEDURE AgregarRepuestoACompra(
+    IN c_CompraID INT,
+    IN c_RepuestoID INT,
+    IN c_Cantidad INT
+)
+BEGIN
+    DECLARE n_precio_unitario DECIMAL(10, 2);
+
+    SELECT precio INTO n_precio_unitario
+    FROM repuestos
+    WHERE id = c_RepuestoID;
+
+    INSERT INTO detalles_compras (compra_id, repuesto_id, cantidad, precio_unitario)
+    VALUES (c_CompraID, c_RepuestoID, c_Cantidad, n_precio_unitario);
+    
+    -- UPDATE compras
+    -- SET total = total + (n_precio_unitario * c_Cantidad)
+    -- WHERE id = c_CompraID;
+
+    SELECT CONCAT('Repuesto agregado a la compra ID ', c_CompraID) AS mensaje;
+END //
+
+DELIMITER ;
+
+CALL AgregarCompra(3, '2024-07-23', 500.00);
+CALL AgregarRepuestoACompra(1, 1, 2);
 ```
 ## Subconsultas
 ### Caso de Uso 2.1 Consulta de Bicicletas Más Vendidas por Marca
