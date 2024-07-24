@@ -5,6 +5,7 @@ base de datos para la gestion eficiente de la informaicon de este negocio
 - [Casos de uso](#casos-de-uso)
 - [Uso Subconsultas](#subconsultas)
 - [Uso Joins](#joins)
+- [Almacenados](#implementar-procedimientos-almacenados)
 - [Funciones Resumen](#funciones-resumen) 
 
 ## Casos de uso
@@ -314,15 +315,43 @@ CALL AgregarRepuestoACompra(1, 1, 2);
 ### Caso de Uso 2.1 Consulta de Bicicletas Más Vendidas por Marca
 **Descripción:** Este caso de uso describe cómo el sistema permite a un usuario consultar las bicicletas más vendidas por cada marca.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS BicicletasVendidasXMarca;
+CREATE PROCEDURE BicicletasVendidasXMarca()
+BEGIN
+    SELECT ma.nombre AS marca, mo.modelo AS modelo
+    FROM marcas ma
+    JOIN modelos mo ON ma.id = mo.marca_id
+    JOIN bicicletas b ON mo.id = b.modelo
+    WHERE mo.id IN (
+        SELECT modelo_vendido_id
+        FROM (
+            SELECT mosub.id as modelo_vendido_id , COUNT(*) as modelos_vendidos
+            FROM modelos mosub
+            JOIN bicicletas bisub ON mosub.id = bisub.modelo
+            GROUP BY mosub.id
+        ) as ventas_de_modelos
+        WHERE mo.id = ventas_de_modelos.id
+        ORDER BY modelos_vendidos DESC
+        LIMIT 1
+    );
+END;
+//
+
+DELIMITER ;
+
+CALL BicicletasVendidasXMarca();
 ```
 ### Caso de Uso 2.2: Clientes con Mayor Gasto en un Año Específico
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los clientes que han gastado más en un año específico.
+
 ```sql
 
 ```
 ### Caso de Uso 2.3: Proveedores con Más Compras en el Último Mes
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los proveedores que han recibido más compras en el último mes.
+
 ```sql
 
 ```
