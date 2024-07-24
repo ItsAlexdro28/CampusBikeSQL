@@ -239,7 +239,31 @@ CALL EliminarRepuesto(4);
 ### Caso de uso 1.4: Consulta de Historial de Ventas por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema permite a un usuario consultar el historial de ventas de un cliente específico, mostrando todas las compras realizadas por el cliente y los detalles de cada venta
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ListarVentas;
+CREATE PROCEDURE ListarVentas()
+BEGIN
+	SELECT id,fecha,cliente_id,total
+	FROM ventas;
+END;
+//
+
+DROP PROCEDURE IF EXISTS ListarDetallesVenta;
+CREATE PROCEDURE ListarDetallesVenta(
+	IN v_VentaID INT
+)
+BEGIN
+	SELECT id,venta_id,bicicleta_id,cantidad,precio_unitario 
+	FROM detalles_ventas
+	WHERE venta_id = v_VentaID;
+END;
+//
+
+DELIMITER ;
+
+CALL ListarVentas();
+CALL ListarDetallesVenta(1);
 ```
 ### Caso de Uso 1.5: Gestión de Compras de Repuestos
 **Descripción:** Este caso de uso describe cómo el sistema gestiona las compras de repuestos a
