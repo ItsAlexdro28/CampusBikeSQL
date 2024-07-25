@@ -327,10 +327,11 @@ CALL AgregarRepuestoACompra(1, 1, 2);
 **Descripción:** Este caso de uso describe cómo el sistema permite a un usuario consultar las bicicletas más vendidas por cada marca.
 ```sql
 DELIMITER //
+
 DROP PROCEDURE IF EXISTS BicicletasVendidasXMarca;
 CREATE PROCEDURE BicicletasVendidasXMarca()
 BEGIN
-    SELECT sub.marca, sub.modelo, MAX(sub.total_compras) AS max_total_compras
+    SELECT marca, modelo
     FROM (
         SELECT ma.nombre AS marca, mo.modelo AS modelo, SUM(dv.cantidad) AS total_compras
         FROM marcas ma
@@ -338,10 +339,21 @@ BEGIN
         JOIN bicicletas bi ON mo.id = bi.modelo
         JOIN detalles_ventas dv ON bi.id = dv.bicicleta_id
         GROUP BY ma.nombre, mo.modelo
-    ) AS sub
-    GROUP BY sub.marca, sub.modelo;
-END;
-//
+    ) AS ventas_por_modelo
+    WHERE total_compras = (
+        SELECT MAX(total_compras)
+        FROM (
+            SELECT ma_sub.nombre AS marca, mo_sub.modelo AS modelo, SUM(dv_sub.cantidad) AS total_compras
+            FROM marcas ma_sub
+            JOIN modelos mo_sub ON ma_sub.id = mo_sub.marca_id
+            JOIN bicicletas bi_sub ON mo_sub.id = bi_sub.modelo
+            JOIN detalles_ventas dv_sub ON bi_sub.id = dv_sub.bicicleta_id
+            GROUP BY ma_sub.nombre, mo_sub.modelo
+        ) AS subconsulta
+        WHERE subconsulta.marca = ventas_por_modelo.marca
+    );
+END //
+
 DELIMITER ;
 
 CALL BicicletasVendidasXMarca();
