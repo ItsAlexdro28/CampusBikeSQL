@@ -362,13 +362,47 @@ CALL BicicletasVendidasXMarca();
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los clientes que han gastado más en un año específico.
 
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ListarClientesMasGastoAño;
+CREATE PROCEDURE ListarClientesMasGastoAño(
+    IN año INT
+)
+BEGIN
+    SELECT c.id, c.nombre, SUM(v.total) AS total_gastado
+    FROM clientes c
+    JOIN ventas v ON c.id = v.cliente_id
+    WHERE YEAR(v.fecha) = año
+    GROUP BY c.id, c.nombre
+    ORDER BY total_gastado DESC;
+END;
+//
+
+DELIMITER ;
+
+CALL ListarClientesMasGastoAño('2024');
 ```
 ### Caso de Uso 2.3: Proveedores con Más Compras en el Último Mes
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los proveedores que han recibido más compras en el último mes.
 
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ListarProveedoresMasComprasUltimoMes;
+CREATE PROCEDURE ListarProveedoresMasComprasUltimoMes()
+BEGIN
+    SELECT p.id, p.nombre, COUNT(c.id) AS total_compras
+    FROM proveedores p
+    JOIN compras c ON c.id = c.proveedor_id
+    WHERE TIMESTAMPDIFF(MONTH, c.fecha, CURDATE()) = 0
+    GROUP BY p.id, p.nombre
+    ORDER BY total_compras DESC;
+END;
+//
+
+DELIMITER ;
+
+CALL ListarProveedoresMasComprasUltimoMes();
 ```
 ### Caso de Uso 2.4: Repuestos con Menor Rotación en el Inventario
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los repuestos que han tenido menor rotación en el inventario, es decir, los menos vendidos.
