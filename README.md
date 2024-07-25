@@ -407,7 +407,25 @@ CALL ListarProveedoresMasComprasUltimoMes();
 ### Caso de Uso 2.4: Repuestos con Menor Rotación en el Inventario
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los repuestos que han tenido menor rotación en el inventario, es decir, los menos vendidos.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ListarRepuestosCompras;
+CREATE PROCEDURE ListarRepuestosCompras()
+BEGIN
+    SELECT id, nombre, total_compras
+    FROM (
+        SELECT r.id as id, r.nombre as nombre, SUM(dc.cantidad) as total_compras
+        FROM repuestos r
+        JOIN detalles_compras dc ON r.id = dc.repuesto_id
+        GROUP BY r.id, r.nombre
+    ) as compras_por_repuesto
+    ORDER BY total_compras ASC;
+END;
+//
+
+DELIMITER ;
+
+CALL ListarRepuestosCompras();
 ```
 ### Caso de Uso 2.5: Ciudades con Más Ventas Realizadas
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar las ciudades donde se han realizado más ventas de bicicletas.
@@ -490,7 +508,37 @@ CALL VentasEnRango('2024-07-01','2024-07-02');
 ### Caso de Uso 4.1: Actualización de Inventario de Bicicletas
 **Descripción:** Este caso de uso describe cómo el sistema actualiza el inventario de bicicletas cuando se realiza una venta.
 ```sql
+DELIMITER //
 
+CREATE PROCEDURE actualizarInventarioBicicletas (
+    IN v_venta_id INT
+)
+BEGIN
+    DECLARE v_bicicleta_id INT;
+    DECLARE v_cantidad INT;
+
+    -- Obtener detalles de la venta
+    SELECT bicicleta_id, cantidad
+    INTO v_bicicleta_id, v_cantidad
+    FROM detalles_ventas
+    WHERE venta_id = p_venta_id;
+
+    -- Actualizar stock de bicicletas
+    UPDATE bicicletas
+    SET stock = stock - v_cantidad
+    WHERE id = v_bicicleta_id;
+END;
+//
+
+CREATE TRIGGER trigger_actualizar_inventario
+AFTER INSERT ON ventas
+FOR EACH ROW
+BEGIN
+    CALL actualizarInventarioBicicletas(NEW.id);
+END;
+//
+
+DELIMITER ;
 ```
 ### Caso de Uso 4.2: Registro de Nueva Venta
 **Descripción:** Este caso de uso describe cómo el sistema registra una nueva venta, incluyendo la creación de la venta y la inserción de los detalles de la venta.
