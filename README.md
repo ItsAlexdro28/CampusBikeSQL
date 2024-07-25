@@ -407,30 +407,31 @@ CALL ListarProveedoresMasComprasUltimoMes();
 ### Caso de Uso 2.4: Repuestos con Menor Rotación en el Inventario
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los repuestos que han tenido menor rotación en el inventario, es decir, los menos vendidos.
 ```sql
+
+```
+### Caso de Uso 2.5: Ciudades con Más Ventas Realizadas
+**Descripción:** Este caso de uso describe cómo el sistema permite consultar las ciudades donde se han realizado más ventas de bicicletas.
+```sql
 DELIMITER //
 
-DROP PROCEDURE IF EXISTS ListarRepuestosCompras;
-CREATE PROCEDURE ListarRepuestosCompras()
+DROP PROCEDURE IF EXISTS CiudadesMayorVentas;
+CrEATE PROCEDURE CiudadesMayorVentas()
 BEGIN
-    SELECT id, nombre, total_compras
+    SELECT ciudades, Nro_Ventas
     FROM (
-        SELECT r.id as id, r.nombre as nombre, SUM(dc.cantidad) as total_compras
-        FROM repuestos r
-        JOIN detalles_compras dc ON r.id = dc.repuesto_id
-        GROUP BY r.id, r.nombre
-    ) as compras_por_repuesto
-    ORDER BY total_compras ASC;
+        SELECT cdes.nombre AS ciudades, COUNT(vnts.id) AS Nro_Ventas
+        FROM ciudades cdes
+        JOIN clientes clnt ON cdes.id = clnt.ciudad_id
+        JOIN ventas vnts ON clnt.id = vnts.cliente_id
+        GROUP BY cdes.nombre 
+    ) AS ventas_ciudad
+    ORDER BY Nro_ventas ASC;
 END;
 //
 
 DELIMITER ;
 
-CALL ListarRepuestosCompras();
-```
-### Caso de Uso 2.5: Ciudades con Más Ventas Realizadas
-**Descripción:** Este caso de uso describe cómo el sistema permite consultar las ciudades donde se han realizado más ventas de bicicletas.
-```sql
-
+CALL CiudadesMayorVentas();
 ```
 ## Joins
 ### Caso de Uso 3.1: Consulta de Ventas por Ciudad
@@ -508,37 +509,7 @@ CALL VentasEnRango('2024-07-01','2024-07-02');
 ### Caso de Uso 4.1: Actualización de Inventario de Bicicletas
 **Descripción:** Este caso de uso describe cómo el sistema actualiza el inventario de bicicletas cuando se realiza una venta.
 ```sql
-DELIMITER //
 
-CREATE PROCEDURE actualizarInventarioBicicletas (
-    IN v_venta_id INT
-)
-BEGIN
-    DECLARE v_bicicleta_id INT;
-    DECLARE v_cantidad INT;
-
-    -- Obtener detalles de la venta
-    SELECT bicicleta_id, cantidad
-    INTO v_bicicleta_id, v_cantidad
-    FROM detalles_ventas
-    WHERE venta_id = p_venta_id;
-
-    -- Actualizar stock de bicicletas
-    UPDATE bicicletas
-    SET stock = stock - v_cantidad
-    WHERE id = v_bicicleta_id;
-END;
-//
-
-CREATE TRIGGER trigger_actualizar_inventario
-AFTER INSERT ON ventas
-FOR EACH ROW
-BEGIN
-    CALL actualizarInventarioBicicletas(NEW.id);
-END;
-//
-
-DELIMITER ;
 ```
 ### Caso de Uso 4.2: Registro de Nueva Venta
 **Descripción:** Este caso de uso describe cómo el sistema registra una nueva venta, incluyendo la creación de la venta y la inserción de los detalles de la venta.
@@ -588,7 +559,33 @@ DELIMITER ;
 ### Caso de Uso 4.11: Calculadora de Descuentos en Ventas
 **Descripción:** Este caso de uso describe cómo el sistema aplica un descuento a una venta antes de registrar los detalles de la venta.
 ```sql
+DELIMITER //
+DROP PROCEDURE IF EXISTS VentaConDescuento;
+CREATE PROCEDURE VentaConDescuento(
+    IN v_id INT,
+    IN v_descuento INT
+)
+BEGIN
+    DECLARE v_total_venta DECIMAL(10, 2);
 
+    SELECT total INTO v_total_venta
+    FROM ventas
+    WHERE id = v_id;
+
+    IF v_descuento BETWEEN 0 AND 100 THEN
+        UPDATE ventas
+        SET total = v_total_venta * (1 - v_descuento / 100)
+        WHERE id = v_id;
+    ELSE
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'El descuento debe ser un valor entre 0 y 100.';
+    END IF;
+    
+    SELECT CONCAT('Se ha aplicado un descuento del ', v_descuento, '% a la venta con ID ', v_id) AS Resultado;
+END; 
+//
+
+DELIMITER ;
 ```
 ## Funciones Resumen
 ### Caso de Uso 5.1: Calcular el Total de Ventas Mensuales
