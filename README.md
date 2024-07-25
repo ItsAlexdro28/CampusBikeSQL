@@ -71,8 +71,8 @@ DELIMITER ;
 ```sql
 DELIMITER //
 
-DROP PROCEDURE IF EXISTS CrearVenta;
-CREATE PROCEDURE CrearVenta(
+DROP PROCEDURE IF EXISTS AgregarVenta;
+CREATE PROCEDURE AgregarVenta(
     IN v_ClienteID INT
 )
 BEGIN
@@ -150,7 +150,7 @@ END;
 
 DELIMITER ;
 
-CALL CrearVenta(1);
+CALL AgregarVenta(1);
 CALL AgregarBicicletaAVenta(5, 2, 3);
 CALL ConfirmarVenta('n', 5);
 ```
@@ -309,9 +309,9 @@ BEGIN
     INSERT INTO detalles_compras (compra_id, repuesto_id, cantidad, precio_unitario)
     VALUES (c_CompraID, c_RepuestoID, c_Cantidad, n_precio_unitario);
     
-    -- UPDATE compras
-    -- SET total = total + (n_precio_unitario * c_Cantidad)
-    -- WHERE id = c_CompraID;
+    UPDATE compras
+    SET total = total + (n_precio_unitario * c_Cantidad)
+    WHERE id = c_CompraID;
 
     SELECT CONCAT('Repuesto agregado a la compra ID ', c_CompraID) AS mensaje;
 END;
@@ -509,27 +509,196 @@ CALL VentasEnRango('2024-07-01','2024-07-02');
 ### Caso de Uso 4.1: Actualización de Inventario de Bicicletas
 **Descripción:** Este caso de uso describe cómo el sistema actualiza el inventario de bicicletas cuando se realiza una venta.
 ```sql
+DELIMITER //
 
+CREATE PROCEDURE actualizarInventarioBicicletas (
+    IN v_venta_id INT
+)
+BEGIN
+    DECLARE v_bicicleta_id INT;
+    DECLARE v_cantidad INT;
+
+    SELECT bicicleta_id, cantidad
+    INTO v_bicicleta_id, v_cantidad
+    FROM detalles_ventas
+    WHERE venta_id = v_venta_id;
+
+    UPDATE bicicletas
+    SET stock = stock - v_cantidad
+    WHERE id = v_bicicleta_id;
+END;
+//
+
+CREATE TRIGGER trigger_actualizar_inventario
+AFTER INSERT ON ventas
+FOR EACH ROW
+BEGIN
+    CALL actualizarInventarioBicicletas(NEW.id);
+END;
+//
+
+DELIMITER ;
 ```
 ### Caso de Uso 4.2: Registro de Nueva Venta
 **Descripción:** Este caso de uso describe cómo el sistema registra una nueva venta, incluyendo la creación de la venta y la inserción de los detalles de la venta.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS CrearVenta;
+CREATE PROCEDURE CrearVenta(
+    IN v_ClienteID INT
+)
+BEGIN
+    DECLARE nueva_venta_id INT;
+    DECLARE fecha_venta DATE;
+    DECLARE total_venta DECIMAL(10, 2);
+
+    SET fecha_venta = CURDATE();
+
+    INSERT INTO ventas (fecha, cliente_id, total)
+    VALUES (fecha_venta, v_ClienteID, 0);
+
+    SET nueva_venta_id = LAST_INSERT_ID();
+
+    SELECT nueva_venta_id AS venta_id;
+END;
+//
+
+DROP PROCEDURE IF EXISTS AgregarBicicletaVenta;
+CREATE PROCEDURE AgregarBicicletaVenta(
+    IN v_VentaID INT,
+    IN v_BicicletaID INT,
+    IN v_Cantidad INT
+)
+BEGIN
+    DECLARE n_precio_unitario DECIMAL(10, 2);
+
+    SELECT precio INTO n_precio_unitario
+    FROM bicicletas
+    WHERE id = v_BicicletaID;
+
+    INSERT INTO detalles_ventas (venta_id, bicicleta_id, cantidad, precio_unitario)
+    VALUES (v_VentaID, v_BicicletaID, v_Cantidad, n_precio_unitario);
+
+    UPDATE ventas
+    SET total = total + (n_precio_unitario * v_Cantidad)
+    WHERE id = v_VentaID;
+
+    SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID, ) AS mensaje;
+
+    UPDATE bicicletas b
+    SET b.stock = b.stock - dv.cantidad_vendida
+    WHERE id = dv.bicicleta_id;
+END;
+//
+
+DELIMITER ;
+
+CALL CrearVenta(1);
+CALL AgregarBicicletaVenta(5, 2, 3);
 ```
 ### Caso de Uso 4.3: Generación de Reporte de Ventas por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema genera un reporte de ventas para un cliente específico, mostrando todas las ventas realizadas por el cliente y los detalles de cada venta.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS DetallesVentasCliente;
+CREATE PROCEDURE DetallesVentasCliente(
+    IN v_ClienteID INT
+)
+BEGIN
+    SELECT c.id, c.nombre, v.fecha, v.total, dv.venta_id, dv.bicicleta_id, dv.cantidad, dv.precio_unitario
+    FROM clientes c
+    JOIN ventas v ON c.id = v.cliente_id
+    JOIN detalles_ventas dv ON v.id = dv.venta_id
+    WHERE c.id = v_ClienteID;
+END;
+//
+
+DELIMITER ;
+
+CALL DetallesVentasCliente(2);
 ```
 ### Caso de Uso 4.4: Registro de Compra de Repuestos
 **Descripción:** Este caso de uso describe cómo el sistema registra una nueva compra de repuestos a un proveedor.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS CrearCompra;
+CREATE PROCEDURE CrearCompra(
+    IN c_ProveedorID INT
+)
+BEGIN
+    DECLARE nueva_compra_id INT;
+    DECLARE fecha_compra DATE;
+    DECLARE total_compra DECIMAL(10, 2);
+
+    SET fecha_compra = CURDATE();
+
+    INSERT INTO compras (fecha, proveedor_id, total)
+    VALUES (fecha_compra, c_ProveedorID, 0);
+
+    SET nueva_compra_id = LAST_INSERT_ID();
+
+    SELECT nueva_compra_id AS compra_id;
+END;
+//
+
+DROP PROCEDURE IF EXISTS AgregarRepuestoCompra;
+
+CREATE PROCEDURE AgregarRepuestoCompra(
+    IN c_CompraID INT,
+    IN c_RepuestoID INT,
+    IN c_Cantidad INT
+)
+BEGIN
+    DECLARE n_precio_unitario DECIMAL(10, 2);
+
+    SELECT precio INTO n_precio_unitario
+    FROM repuestos
+    WHERE id = c_RepuestoID;
+
+    INSERT INTO detalles_compras (compra_id, repuesto_id, cantidad, precio_unitario)
+    VALUES (c_CompraID, c_RepuestoID, c_Cantidad, n_precio_unitario);
+
+    UPDATE compras
+    SET total = total + (n_precio_unitario * c_Cantidad)
+    WHERE id = c_CompraID;
+
+    UPDATE repuestos
+    SET stock = stock + c_Cantidad
+    WHERE id = c_RepuestoID;
+
+    SELECT CONCAT('Repuesto agregado a la compra ID ', c_CompraID) AS mensaje;
+END;
+//
+
+DELIMITER ;
+
+CALL CrearCompra(3);
+CALL AgregarRepuestoCompra(1, 1, 5);
 ```
 ### Caso de Uso 4.5: Generación de Reporte de Inventario
 **Descripción:** Este caso de uso describe cómo el sistema genera un reporte de inventario de bicicletas y repuestos.
 ```sql
+DELIMITER //
+DROP PROCEDURE IF EXISTS ReporteInventario;
+CREATE PROCEDURE ReporteInventario()
+BEGIN
+    SELECT bicicleta_id AS id, SUM(cantidad) AS cantidad_total, 'Bicicleta' AS tipo
+    FROM detalles_ventas
+    GROUP BY bicicleta_id
 
+    UNION ALL
+
+    SELECT repuesto_id AS id, SUM(cantidad) AS cantidad_total, 'Repuesto' AS tipo
+    FROM detalles_compras
+    GROUP BY repuesto_id;
+END //
+
+DELIMITER ;
+
+CALL ReporteInventario();
 ```
 ### Caso de Uso 4.6: Actualización Masiva de Precios
 **Descripción:** Este caso de uso describe cómo el sistema permite actualizar masivamente los precios de todas las bicicletas de una marca específica.
