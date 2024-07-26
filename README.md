@@ -343,12 +343,12 @@ BEGIN
     WHERE total_compras = (
         SELECT MAX(total_compras)
         FROM (
-            SELECT ma_sub.nombre AS marca, mo_sub.modelo AS modelo, SUM(dv_sub.cantidad) AS total_compras
-            FROM marcas ma_sub
-            JOIN modelos mo_sub ON ma_sub.id = mo_sub.marca_id
-            JOIN bicicletas bi_sub ON mo_sub.id = bi_sub.modelo
-            JOIN detalles_ventas dv_sub ON bi_sub.id = dv_sub.bicicleta_id
-            GROUP BY ma_sub.nombre, mo_sub.modelo
+            SELECT masub.nombre AS marca, mosub.modelo AS modelo, SUM(dvsub.cantidad) AS total_compras
+            FROM marcas masub
+            JOIN modelos mosub ON masub.id = mosub.marca_id
+            JOIN bicicletas bisub ON mosub.id = bisub.modelo
+            JOIN detalles_ventas dvsub ON bisub.id = dvsub.bicicleta_id
+            GROUP BY masub.nombre, mosub.modelo
         ) AS subconsulta
         WHERE subconsulta.marca = ventas_por_modelo.marca
     );
@@ -366,21 +366,22 @@ DELIMITER //
 
 DROP PROCEDURE IF EXISTS ListarClientesMasGastoAño;
 CREATE PROCEDURE ListarClientesMasGastoAño(
-    IN año INT
+    IN v_año INT
 )
 BEGIN
-    SELECT c.id, c.nombre, SUM(v.total) AS total_gastado
+    SELECT c.id, c.nombre,
+        (SELECT SUM(v.total)
+        FROM ventas v 
+        WHERE v.cliente_id = c.id AND YEAR(v.fecha) = v_año
+        ) AS total_gastado
     FROM clientes c
-    JOIN ventas v ON c.id = v.cliente_id
-    WHERE YEAR(v.fecha) = año
-    GROUP BY c.id, c.nombre
     ORDER BY total_gastado DESC;
 END;
 //
 
 DELIMITER ;
 
-CALL ListarClientesMasGastoAño('2024');
+CALL ListarClientesMasGastoAño(2024);
 ```
 ### Caso de Uso 2.3: Proveedores con Más Compras en el Último Mes
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los proveedores que han recibido más compras en el último mes.
@@ -391,11 +392,11 @@ DELIMITER //
 DROP PROCEDURE IF EXISTS ListarProveedoresMasComprasUltimoMes;
 CREATE PROCEDURE ListarProveedoresMasComprasUltimoMes()
 BEGIN
-    SELECT p.id, p.nombre, COUNT(c.id) AS total_compras
+    SELECT p.id, p.nombre,
+        (SELECT COUNT(c.id)
+        FROM compras c
+        WHERE c.proveedor_id = p.id AND TIMESTAMPDIFF(MONTH, c.fecha, CURDATE()) = 0) as total_compras
     FROM proveedores p
-    JOIN compras c ON c.id = c.proveedor_id
-    WHERE TIMESTAMPDIFF(MONTH, c.fecha, CURDATE()) = 0
-    GROUP BY p.id, p.nombre
     ORDER BY total_compras DESC;
 END;
 //
@@ -407,7 +408,24 @@ CALL ListarProveedoresMasComprasUltimoMes();
 ### Caso de Uso 2.4: Repuestos con Menor Rotación en el Inventario
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los repuestos que han tenido menor rotación en el inventario, es decir, los menos vendidos.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ListarRepuestosMenorRotacion;
+CREATE PROCEDURE ListarRepuestosMenorRotacion()
+BEGIN
+    SELECT r.id, r.nombre,
+        (SELECT SUM(dc.cantidad)
+        FROM detalles_compras dc
+        WHERE dc.repuesto_id = r.id
+        ) AS cantidad_movimientos
+    FROM repuestos r
+    ORDER BY cantidad_movimientos ASC;
+END;
+//
+
+DELIMITER ;
+
+CALL ListarRepuestosMenorRotacion();
 ```
 ### Caso de Uso 2.5: Ciudades con Más Ventas Realizadas
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar las ciudades donde se han realizado más ventas de bicicletas.
@@ -511,29 +529,23 @@ CALL VentasEnRango('2024-07-01','2024-07-02');
 ```sql
 DELIMITER //
 
+DROP PROCEDURE IF EXISTS actualizarInventarioBicicletas;
 CREATE PROCEDURE actualizarInventarioBicicletas (
-    IN v_venta_id INT
+    IN dv_Bicicleta_id INT, IN dv_Cantidad INT
 )
 BEGIN
-    DECLARE v_bicicleta_id INT;
-    DECLARE v_cantidad INT;
-
-    SELECT bicicleta_id, cantidad
-    INTO v_bicicleta_id, v_cantidad
-    FROM detalles_ventas
-    WHERE venta_id = v_venta_id;
-
     UPDATE bicicletas
-    SET stock = stock - v_cantidad
-    WHERE id = v_bicicleta_id;
+    SET stock = stock - dv_Cantidad
+    WHERE id = dv_Bicicleta_id;
 END;
 //
 
+DROP TRIGGER IF EXISTS trigger_actualizar_inventario;
 CREATE TRIGGER trigger_actualizar_inventario
-AFTER INSERT ON ventas
+AFTER INSERT ON detalles_ventas
 FOR EACH ROW
 BEGIN
-    CALL actualizarInventarioBicicletas(NEW.id);
+    CALL actualizarInventarioBicicletas(NEW.bicicleta_id, NEW.cantidad);
 END;
 //
 
@@ -694,7 +706,7 @@ BEGIN
     SELECT repuesto_id AS id, SUM(cantidad) AS cantidad_total, 'Repuesto' AS tipo
     FROM detalles_compras
     GROUP BY repuesto_id;
-END //
+END; //
 
 DELIMITER ;
 
@@ -703,17 +715,72 @@ CALL ReporteInventario();
 ### Caso de Uso 4.6: Actualización Masiva de Precios
 **Descripción:** Este caso de uso describe cómo el sistema permite actualizar masivamente los precios de todas las bicicletas de una marca específica.
 ```sql
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS ActualizarMasivamentePrecios;
+CREATE PROCEDURE ActualizarMasivamentePrecios(
+    IN m_MarcaID INT, IN m_incremento DECIMAL(10, 2)
+)
+BEGIN
+    IF m_incremento > 0 THEN
+        UPDATE bicicletas b
+        JOIN modelos m ON b.modelo = m.id
+        SET b.precio = (b.precio * (1 + m_incremento))
+        WHERE m.marca_id = m_MarcaID;
+    ELSE
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'El porcentaje de incremento debe ser superior a 0';
+    END IF;
+
+    SELECT CONCAT('Se ha aplicado un incremento del ', m_incremento * 100, '% a las bicicletas de la marca con ID ', m_MarcaID) AS Resultado;
+END //
+
+DELIMITER ;
+
+CALL ActualizarMasivamentePrecios(1, 0.1);
 
 ```
 ### Caso de Uso 4.7: Generación de Reporte de Clientes por Ciudad
 **Descripción:** Este caso de uso describe cómo el sistema genera un reporte de clientes agrupados por ciudad.
 ```sql
+DELIMITER //
 
-```
-### Caso de Uso 4.8: Verificación de Stock antes de Venta
-**Descripción:** Este caso de uso describe cómo el sistema verifica el stock de una bicicleta antes de permitir la venta.
-```sql
+DROP PROCEDURE IF EXISTS VerificarStockBicicleta;
+CREATE PROCEDURE VerificarStockBicicleta(
+    IN b_BicicletaID INT,
+    IN b_Cantidad INT,
+    OUT mensaje VARCHAR(255)
+)
+BEGIN
+    DECLARE v_stock INT;
+    
+    SELECT stock INTO v_stock
+    FROM bicicletas
+    WHERE id = b_BicicletaID;
+    
+    IF v_stock <= b_Cantidad THEN
+        SET mensaje = 'No hay suficiente stock para realizar la venta';
+    END IF;
+END;
+//
 
+DROP TRIGGER IF EXISTS trigger_verificar_stock;
+CREATE TRIGGER trigger_verificar_stock
+BEFORE INSERT ON detalles_ventas
+FOR EACH ROW
+BEGIN
+    DECLARE mensaje VARCHAR(255);
+    
+    CALL VerificarStockBicicleta(NEW.bicicleta_id, NEW.cantidad, mensaje);
+    
+    IF mensaje = 'No hay suficiente stock para realizar la venta' THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = mensaje;
+    END IF;
+END;
+//
+
+DELIMITER ;
 ```
 ### Caso de Uso 4.9: Registro de Devoluciones
 **Descripción:** Este caso de uso describe cómo el sistema registra la devolución de una bicicleta por un cliente.
