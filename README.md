@@ -893,7 +893,30 @@ SELECT RepuestosCompradosProveedor(2);
 ### Caso de Uso 5.6: Calcular el Número de Clientes Activos en un Mes
 **Descripción:** Este caso de uso describe cómo el sistema cuenta el número de clientes que han realizado al menos una compra en un mes específico.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS ContarCantidadClientesVentasMasCero;
+CREATE FUNCTION ContarCantidadClientesVentasMasCero(dv_Mes VARCHAR(20), dv_Año INT)
+RETURNS VARCHAR(200)
+DETERMINISTIC
+BEGIN
+
+    DECLARE cantidadClientes INT;
+    DECLARE mensaje VARCHAR(200);
+
+    SELECT COUNT(DISTINCT v.cliente_id) INTO cantidadClientes
+    FROM ventas v
+    WHERE YEAR(v.fecha) = dv_Año AND MONTHNAME(v.fecha) = dv_Mes;
+
+    SET mensaje = CONCAT('La cantidad de clientes que han realizado al menos una compra en el mes ', dv_Mes, ' del año ', dv_Año, ' es ', cantidadClientes);
+
+    RETURN mensaje;
+END;
+//
+
+DELIMITER ;
+
+SELECT ContarCantidadClientesVentasMasCero('July',2024) as Cantidad_de_Clientes;
 ```
 ### Caso de Uso 5.7: Calcular el Promedio de Compras por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de compras realizadas a un proveedor específico.
@@ -903,7 +926,23 @@ SELECT RepuestosCompradosProveedor(2);
 ### Caso de Uso 5.8: Calcular el Total de Ventas por Marca
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ventas agrupadas por la marca de las bicicletas vendidas.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS AgruparMarcasPorTotalVendido;
+CREATE PROCEDURE AgruparMarcasPorTotalVendido()
+BEGIN
+    SELECT ma.nombre, SUM(dv.cantidad * dv.precio_unitario) as total
+    FROM detalles_ventas dv
+    JOIN bicicletas b ON b.id = dv.bicicleta_id
+    JOIN modelos mo ON mo.id = b.modelo
+    JOIN marcas ma ON ma.id = mo.marca_id
+    GROUP BY ma.nombre;
+END;
+//
+
+DELIMITER ;
+
+CALL AgruparMarcasPorTotalVendido();
 ```
 ### Caso de Uso 5.9: Calcular el Promedio de Precios de Bicicletas por Marca
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de precios de las bicicletas agrupadas por marca.
