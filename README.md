@@ -833,6 +833,26 @@ DELIMITER ;
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de ventas realizadas por un cliente específico.
 ```sql
 
+DELIMITER //
+
+DROP FUNCTION IF EXISTS PromedioVentasClientes;
+CREATE FUNCTION PromedioVentasClientes(v_ClienteID INT)
+RETURNS DECIMAL (10,2)
+DETERMINISTIC
+BEGIN
+    DECLARE promedio DECIMAL(10,2);
+    SELECT AVG(v.total) INTO promedio
+    FROM clientes c
+    JOIN ventas v ON c.id = v.cliente_id
+    WHERE c.id = v_ClienteID;
+    RETURN promedio;
+END;
+//
+
+DELIMITER ;
+
+SELECT PromedioVentasClientes(2);
+
 ```
 ### Caso de Uso 5.3: Contar el Número de Ventas Realizadas en un Rango de
 Fechas
@@ -843,7 +863,27 @@ Fechas
 ### Caso de Uso 5.4: Calcular el Total de Repuestos Comprados por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de repuestos comprados a un proveedor específico.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS RepuestosCompradosProveedor;
+CREATE FUNCTION RepuestosCompradosProveedor(p_ProveedorID INT)
+RETURNS DECIMAL(10,2)
+DETERMINISTIC
+BEGIN
+    DECLARE totalRepuestos DECIMAL(10,2);
+
+    SELECT SUM(dc.cantidad) INTO totalRepuestos
+    FROM compras c
+    JOIN detalles_compras dc ON dc.compra_id = c.id
+    WHERE c.proveedor_id = p_ProveedorID;
+
+    RETURN totalRepuestos;
+END;
+//
+
+DELIMITER ;
+
+SELECT RepuestosCompradosProveedor(2);
 ```
 ### Caso de Uso 5.5: Calcular el Ingreso Total por Año
 **Descripción:** Este caso de uso describe cómo el sistema calcula el ingreso total generado en un año específico.
