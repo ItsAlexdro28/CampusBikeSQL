@@ -531,7 +531,8 @@ DELIMITER //
 
 DROP PROCEDURE IF EXISTS actualizarInventarioBicicletas;
 CREATE PROCEDURE actualizarInventarioBicicletas (
-    IN dv_Bicicleta_id INT, IN dv_Cantidad INT
+    IN dv_Bicicleta_id INT, 
+    IN dv_Cantidad INT
 )
 BEGIN
     UPDATE bicicletas
@@ -785,12 +786,63 @@ DELIMITER ;
 ### Caso de Uso 4.9: Registro de Devoluciones
 **Descripción:** Este caso de uso describe cómo el sistema registra la devolución de una bicicleta por un cliente.
 ```sql
+DELIMITER //
 
+CREATE PROCEDURE registrarDevolucion(
+    IN p_venta_id INT,
+)
+BEGIN
+    DECLARE v_cantidad_existente INT;
+    DECLARE v_bicicleta_id INT;
+    
+    SELECT cantidad INTO v_cantidad_existente 
+    FROM detalles_ventas 
+    WHERE venta_id = p_venta_id;
+
+    IF v_cantidad_existente IS NOT NULL THEN
+        UPDATE detalles_ventas
+        SET cantidad = 0
+        WHERE venta_id = p_venta_id;
+
+        SELECT bicicleta_id INTO v_bicicleta_id
+        FROM detalles_ventas
+        WHERE venta_id = p_venta_id;
+
+        UPDATE ventas
+        SET total = 0
+        WHERE id = p_venta_id;
+
+        UPDATE bicicletas
+        SET stock = stock + v_cantidad_existente
+        WHERE id = p_bicicleta_id;
+    ELSE
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Venta o bicicleta no encontrada';
+    END IF;
+
+END; 
+//
+
+DELIMITER ;
 ```
 ### Caso de Uso 4.10: Generación de Reporte de Compras por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema genera un reporte de compras realizadas a un proveedor específico, mostrando todos los detalles de las compras.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ReporteComprasProveedor;
+CREATE PROCEDURE ReporteComprasProveedor(
+    IN r_proveedor INT
+)
+BEGIN
+    SELECT cmpr.id, cmpr.fecha, cmpr.total, dtllCmpr.cantidad, dtllCmpr.preico_unitario, rpst.nombre, rpst.descripcion
+    FROM compras cmpr
+    INNER JOIN detalles_compreas dtllCmpr ON cmpr.id = dtllCmpr.compra_id
+    INNER JOIN repuestos rpst ON dtllCmpr.repuesto_id = rpst.id
+    WHERE cmpr.proveedor_id = r_proveedor
+END; 
+//
+
+DELIMITER ;
 ```
 ### Caso de Uso 4.11: Calculadora de Descuentos en Ventas
 **Descripción:** Este caso de uso describe cómo el sistema aplica un descuento a una venta antes de registrar los detalles de la venta.
