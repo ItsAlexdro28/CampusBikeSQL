@@ -952,7 +952,21 @@ CALL AgruparMarcasPorTotalVendido();
 ### Caso de Uso 5.10: Contar el Número de Repuestos por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema cuenta el número de repuestos suministrados por cada proveedor.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS ContarNRepuestosProveedor;
+CREATE PROCEDURE ContarNRepuestosProveedor()
+BEGIN
+    SELECT c.proveedor_id, SUM(dc.cantidad)
+    FROM detalles_compras dc
+    JOIN compras c ON dc.compra_id = c.id
+    GROUP BY c.proveedor_id;
+END;
+//
+
+DELIMITER ;
+
+CALL ContarNRepuestosProveedor();
 ```
 ### Caso de Uso 5.11: Calcular el Total de Ingresos por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ingresos generados por cada cliente.
@@ -962,7 +976,21 @@ CALL AgruparMarcasPorTotalVendido();
 ### Caso de Uso 5.12: Calcular el Promedio de Compras Mensuales
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de compras realizadas mensualmente por todos los clientes.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS PromedioCompras;
+CREATE PROCEDURE PromedioCompras()
+BEGIN
+    SELECT MONTHNAME(v.fecha) as mes, YEAR(v.fecha) as año, AVG(dv.cantidad) as Promedio_del_Mes
+    FROM detalles_ventas dv
+    JOIN ventas v ON dv.venta_id = v.id
+    GROUP BY mes, año;
+END;
+//
+
+DELIMITER ;
+
+CALL PromedioCompras();
 ```
 ### Caso de Uso 5.13: Calcular el Total de Ventas por Día de la Semana
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ventas realizadas en cada día de la semana.
@@ -972,7 +1000,22 @@ CALL AgruparMarcasPorTotalVendido();
 ### Caso de Uso 5.14: Contar el Número de Ventas por Categoría de Bicicleta
 **Descripción:** Este caso de uso describe cómo el sistema cuenta el número de ventas realizadas para cada categoría de bicicleta (por ejemplo, montaña, carretera, híbrida).
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS VentasModelos;
+CREATE PROCEDURE VentasModelos()
+BEGIN
+    SELECT mo.modelo, SUM(dv.cantidad) as Cantidad_de_Ventas
+    FROM detalles_ventas dv
+    JOIN bicicletas b ON b.id = dv.bicicleta_id
+    JOIN modelos mo ON mo.id = b.modelo
+    GROUP BY mo.modelo;
+END;
+//
+
+DELIMITER ;
+
+CALL VentasModelos();
 ```
 ### Caso de Uso 5.15: Calcular el Total de Ventas por Año y Mes
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ventas realizadas cada mes, agrupadas por año.
