@@ -848,6 +848,7 @@ DELIMITER ;
 **Descripción:** Este caso de uso describe cómo el sistema aplica un descuento a una venta antes de registrar los detalles de la venta.
 ```sql
 DELIMITER //
+
 DROP PROCEDURE IF EXISTS VentaConDescuento;
 CREATE PROCEDURE VentaConDescuento(
     IN v_id INT,
@@ -879,7 +880,27 @@ DELIMITER ;
 ### Caso de Uso 5.1: Calcular el Total de Ventas Mensuales
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ventas realizadas en un mes específico.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS TotalVentasMensuales;
+CREATE FUNCTION TotalVentasMensuales(
+    f_año INT,
+    f_mes INT
+) RETURNS DECIMAL(10, 2)
+BEGIN
+    DECLARE total_ventas DECIMAL(10, 2);
+    SELECT SUM(total) INTO total_ventas
+    FROM ventas vnts
+    WHERE
+        YEAR(vnts.fecha) = f_año
+        AND MONTH(vnts.fecha) = f_mes;
+    RETURN total_ventas;
+END; 
+//
+
+DELIMITER ;
+
+SELECT TotalVentasMensuales(2024, 7);
 ```
 ### Caso de Uso 5.2: Calcular el Promedio de Ventas por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de ventas realizadas por un cliente específico.
@@ -910,7 +931,28 @@ SELECT PromedioVentasClientes(2);
 Fechas
 **Descripción:** Este caso de uso describe cómo el sistema cuenta el número de ventas realizadas dentro de un rango de fechas específico.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS ContarVentasFechas;
+CREATE FUNCTION ContarVentasFechas(
+    f_inicio DATE,
+    f_final DATE
+) RETURNS INT
+DETERMINISTIC
+BEGIN
+    DECLARE num_ventas INT;
+
+    SELECT COUNT(vnts.id) INTO num_ventas
+    FROM ventas vnts
+    WHERE fecha BETWEEN f_inicio AND end_date;
+
+    RETURN num_ventas;
+END;
+//
+
+DELIMITER ;
+
+SELECT ContarVentasPorRangoFechas('2024-07-01', '2024-07-31');
 ```
 ### Caso de Uso 5.4: Calcular el Total de Repuestos Comprados por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de repuestos comprados a un proveedor específico.
@@ -940,7 +982,27 @@ SELECT RepuestosCompradosProveedor(2);
 ### Caso de Uso 5.5: Calcular el Ingreso Total por Año
 **Descripción:** Este caso de uso describe cómo el sistema calcula el ingreso total generado en un año específico.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS IngresoTotalAnual;
+CREATE FUNCTION IngresoTotalAnual(
+    f_año INT
+) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE total_ingreso DECIMAL(10, 2);
+
+    SELECT SUM(total) INTO total_ingreso
+    FROM ventas
+    WHERE YEAR(fecha) = f_año;
+
+    RETURN total_ingreso;
+END;
+//
+
+DELIMITER ;
+
+SELECT IngresoTotalAnual(2024);
 ```
 ### Caso de Uso 5.6: Calcular el Número de Clientes Activos en un Mes
 **Descripción:** Este caso de uso describe cómo el sistema cuenta el número de clientes que han realizado al menos una compra en un mes específico.
@@ -973,7 +1035,27 @@ SELECT ContarCantidadClientesVentasMasCero('July',2024) as Cantidad_de_Clientes;
 ### Caso de Uso 5.7: Calcular el Promedio de Compras por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de compras realizadas a un proveedor específico.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS PromedioComprasProveedor;
+CREATE FUNCTION PromedioComprasProveedor(
+    f_proveedor INT
+) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE promedio_compras DECIMAL(10, 2);
+
+    SELECT AVG(total) INTO promedio_compras
+    FROM compras
+    WHERE proveedor_id = f_proveedor;
+
+    RETURN promedio_compras;
+END;
+//
+
+DELIMITER ;
+
+SELECT PromedioComprasProveedor(1);
 ```
 ### Caso de Uso 5.8: Calcular el Total de Ventas por Marca
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ventas agrupadas por la marca de las bicicletas vendidas.
@@ -999,7 +1081,28 @@ CALL AgruparMarcasPorTotalVendido();
 ### Caso de Uso 5.9: Calcular el Promedio de Precios de Bicicletas por Marca
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de precios de las bicicletas agrupadas por marca.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS PromedioPreciosMarca;
+CREATE FUNCTION PromedioPreciosMarca(
+    f_marca INT
+) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE promedio_precio DECIMAL(10, 2);
+
+    SELECT AVG(bclt.precio) INTO promedio_precio
+    FROM bicicletas bclt
+    JOIN modelos mdls ON bclt.modelo = mdls.id
+    WHERE mdls.marca_id = f_marca;
+
+    RETURN promedio_precio;
+END;
+//
+
+DELIMITER ;
+
+SELECT PromedioPreciosMarca(1);
 ```
 ### Caso de Uso 5.10: Contar el Número de Repuestos por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema cuenta el número de repuestos suministrados por cada proveedor.
@@ -1023,7 +1126,27 @@ CALL ContarNRepuestosProveedor();
 ### Caso de Uso 5.11: Calcular el Total de Ingresos por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ingresos generados por cada cliente.
 ```sql
+DELIMITER //
 
+DROP FUNCTION IF EXISTS TotalIngresosCliente;
+CREATE FUNCTION TotalIngresosCliente(
+    f_cliente INT
+) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE total_ingresos DECIMAL(10, 2);
+
+    SELECT SUM(total) INTO total_ingresos
+    FROM ventas
+    WHERE cliente_id = f_cliente;
+
+    RETURN total_ingresos;
+END;
+//
+
+DELIMITER ;
+
+SELECT TotalIngresosCliente(1);
 ```
 ### Caso de Uso 5.12: Calcular el Promedio de Compras Mensuales
 **Descripción:** Este caso de uso describe cómo el sistema calcula el promedio de compras realizadas mensualmente por todos los clientes.
@@ -1047,6 +1170,60 @@ CALL PromedioCompras();
 ### Caso de Uso 5.13: Calcular el Total de Ventas por Día de la Semana
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ventas realizadas en cada día de la semana.
 ```sql
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS TotalVentasSemana;
+CREATE PROCEDURE TotalVentasSemana()
+BEGIN
+    SELECT
+        CASE DAYOFWEEK(fecha)
+            WHEN 1 THEN 'Domingo'
+            WHEN 2 THEN 'Lunes'
+            WHEN 3 THEN 'Martes'
+            WHEN 4 THEN 'Miércoles'
+            WHEN 5 THEN 'Jueves'
+            WHEN 6 THEN 'Viernes'
+            WHEN 7 THEN 'Sábado'
+        END AS DiaDeLaSemana,
+        SUM(total) AS TotalVentas
+    FROM
+        ventas
+    GROUP BY
+        DAYOFWEEK(fecha);
+END;
+//
+
+DELIMITER ;
+/* Da este error pendejo :(
+ERROR 1055 (42000): Expression #1 of SELECT list is not in GROUP BY clause and contains nonaggregated column 'campusbike.ventas.fecha' which is not functionally dependent on columns in GROUP BY clause; this is incompatible with sql_mode=only_full_group_by
+*/
+
+CALL TotalVentasSemana();
+
+DELIMITER //
+
+DROP FUNCTION IF EXISTS TotalVentasSemana;
+CREATE FUNCTION TotalVentasSemana(
+    dia INT
+) RETURNS DECIMAL(10, 2)
+DETERMINISTIC
+BEGIN
+    DECLARE total_ventas DECIMAL(10, 2);
+    
+    SELECT
+        SUM(total) INTO total_ventas
+    FROM
+        ventas
+    WHERE
+        DAYOFWEEK(fecha) = dia;
+
+    RETURN total_ventas;
+END;
+//
+
+DELIMITER ;
+
+SELECT TotalVentasSemana(3);
 
 ```
 ### Caso de Uso 5.14: Contar el Número de Ventas por Categoría de Bicicleta
@@ -1072,6 +1249,26 @@ CALL VentasModelos();
 ### Caso de Uso 5.15: Calcular el Total de Ventas por Año y Mes
 **Descripción:** Este caso de uso describe cómo el sistema calcula el total de ventas realizadas cada mes, agrupadas por año.
 ```sql
+DELIMITER //
 
+DROP PROCEDURE IF EXISTS TotalVentasAnualMensual;
+CREATE PROCEDURE TotalVentasAnualMensual()
+BEGIN
+    SELECT
+        YEAR(fecha) AS Año,
+        MONTH(fecha) AS Mes,
+        SUM(total) AS TotalVentas
+    FROM
+        ventas
+    GROUP BY
+        YEAR(fecha), MONTH(fecha)
+    ORDER BY
+        Año, Mes;
+END;
+//
+
+DELIMITER ;
+
+CALL TotalVentasAnualMensual();
 ```
 #### Andrey Jerez & Alejandro Jimenez
