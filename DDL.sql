@@ -35,8 +35,8 @@ CREATE TABLE modelos (
 CREATE TABLE bicicletas (
     id int AUTO_INCREMENT,
     modelo int,
-    precio DECIMAL(10, 2) NOT NULL,
-    stock int NOT NULL,
+    precio DECIMAL(10, 2) NOT NULL CHECK (precio > 0),
+    stock int NOT NULL CHECK (stock >= 0),
     CONSTRAINT pk_bicicletas_id PRIMARY KEY (id),
     CONSTRAINT fk_bicicletas_modelos_modelo FOREIGN KEY (modelo) REFERENCES modelos(id)
 );
@@ -55,7 +55,7 @@ CREATE TABLE ventas (
     id int AUTO_INCREMENT,
     fecha DATE NOT NULL,
     cliente_id int,
-    total DECIMAL(10, 2) NOT NULL,
+    total DECIMAL(10, 2) NOT NULL CHECK (total > 0),
     CONSTRAINT pk_ventas_id PRIMARY KEY (id),
     CONSTRAINT fk_ventas_clientes_cliente_id FOREIGN KEY (cliente_id) REFERENCES clientes(id)
 );
@@ -64,11 +64,11 @@ CREATE TABLE detalles_ventas (
     id int AUTO_INCREMENT,
     venta_id int,
     bicicleta_id int,
-    cantidad int NOT NULL,
-    precio_unitario DECIMAL(10, 2) NOT NULL,
+    cantidad int NOT NULL CHECK (cantidad > 0),
+    precio_unitario DECIMAL(10, 2) NOT NULL CHECK (precio_unitario > 0),
     CONSTRAINT pk_detalles_ventas_id PRIMARY KEY (id),
     CONSTRAINT fk_detalles_ventas_ventas_venta_id FOREIGN KEY (venta_id) REFERENCES ventas(id),
-    CONSTRAINT fk_detalles_ventas_bicibletas_bicicleta_id FOREIGN KEY (bicicleta_id) REFERENCES bicicletas(id)
+    CONSTRAINT fk_detalles_ventas_bicicletas_bicicleta_id FOREIGN KEY (bicicleta_id) REFERENCES bicicletas(id)
 );
 
 CREATE TABLE proveedores (
@@ -86,8 +86,8 @@ CREATE TABLE repuestos (
     id int AUTO_INCREMENT,
     nombre VARCHAR(40) NOT NULL,
     descripcion VARCHAR(80),
-    precio DECIMAL(10, 2) NOT NULL,
-    stock int NOT NULL,
+    precio DECIMAL(10, 2) NOT NULL CHECK (precio > 0),
+    stock int NOT NULL CHECK (stock >= 0),
     proveedor_id int,
     CONSTRAINT pk_repuestos_id PRIMARY KEY (id),
     CONSTRAINT fk_repuestos_proveedores_proveedor_id FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
@@ -97,7 +97,7 @@ CREATE TABLE compras (
     id int AUTO_INCREMENT,
     fecha DATE NOT NULL,
     proveedor_id int,
-    total DECIMAL(10, 2) NOT NULL,
+    total DECIMAL(10, 2) NOT NULL CHECK (total > 0),
     CONSTRAINT pk_compras_id PRIMARY KEY (id),
     CONSTRAINT fk_compras_proveedores_proveedor_id FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
 );
@@ -106,10 +106,9 @@ CREATE TABLE detalles_compras (
     id int AUTO_INCREMENT,
     compra_id int,
     repuesto_id int,
-    cantidad int NOT NULL,
-    precio_unitario DECIMAL(10, 2) NOT NULL,
+    cantidad int NOT NULL CHECK (cantidad > 0),
+    precio_unitario DECIMAL(10, 2) NOT NULL CHECK (precio_unitario > 0),
     CONSTRAINT pk_detalles_compras_id PRIMARY KEY (id),
-    CONSTRAINT fk_detalles_compras_compreas_compra_id FOREIGN KEY (compra_id) REFERENCES compras(id),
+    CONSTRAINT fk_detalles_compras_compras_compra_id FOREIGN KEY (compra_id) REFERENCES compras(id),
     CONSTRAINT fk_detalles_compras_repuestos_repuesto_id FOREIGN KEY (repuesto_id) REFERENCES repuestos(id)
 );
-
