@@ -65,6 +65,10 @@ END;
 //
 
 DELIMITER ;
+
+CALL AgregarBicicleta(1,100,10);
+CALL ActualizarBicicleta(15,200,9);
+CALL EliminarBicicleta(15);
 ```
 ### Caso de uso 1.2: Registro de Ventas
 **Descripción:** Este caso de uso describe el proceso de registro de una venta de bicicletas incluyendo la creación de una nueva venta, la selección de bicicletas vendidas y el cálculo del total de la venta 
@@ -99,6 +103,7 @@ CREATE PROCEDURE AgregarBicicletaAVenta(
 )
 BEGIN
     DECLARE n_precio_unitario DECIMAL(10, 2);
+    DECLARE v_total DECIMAL(10,2);
 
     SELECT precio INTO n_precio_unitario
     FROM bicicletas
@@ -107,11 +112,16 @@ BEGIN
     INSERT INTO detalles_ventas (venta_id, bicicleta_id, cantidad, precio_unitario)
     VALUES (v_VentaID, v_BicicletaID, v_Cantidad, n_precio_unitario);
 
+
     UPDATE ventas
     SET total = total + (n_precio_unitario * v_Cantidad)
     WHERE id = v_VentaID;
 
-    SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID, ) AS mensaje;
+    SELECT total INTO v_total
+    FROM ventas
+    WHERE id = v_VentaID; 
+
+    SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID, ' con un total de ', v_total) AS mensaje;
 END;
 //
 
@@ -124,14 +134,9 @@ BEGIN
     IF v_confirmacion = 'Y' THEN
 
         UPDATE bicicletas b
-        INNER JOIN (
-            SELECT bicicleta_id, SUM(cantidad) AS cantidad_vendida
-            FROM detalles_ventas
-            WHERE venta_id = v_VentaID
-            GROUP BY bicicleta_id
-        ) dv ON b.id = dv.bicicleta_id
-        SET b.stock = b.stock - dv.cantidad_vendida;
-
+        JOIN detalles_ventas dv ON dv.bicicleta_id = b.id
+        SET b.stock = (b.stock - dv.cantidad)
+        WHERE dv.venta_id = v_VentaID;
 
         SELECT CONCAT('Venta ID ', v_VentaID, ' confirmada y el inventario actualizado') AS mensaje;
         
@@ -151,8 +156,8 @@ END;
 DELIMITER ;
 
 CALL AgregarVenta(1);
-CALL AgregarBicicletaAVenta(5, 2, 3);
-CALL ConfirmarVenta('n', 5);
+CALL AgregarBicicletaAVenta(15, 2, 3);
+CALL ConfirmarVenta('Y', 15);
 ```
 ### Caso de uso 1.3: Gestión de Proveedores y Repuestos
 **Descripción:** Este caso de uso descrube cómo el sistema gensitona la información de proveedores y repuestos, permitiendo agregar nuevos proveedores y repuestos, actualizar la información existente y eliminar proveedores y repuesots que ya no están activos
@@ -162,7 +167,7 @@ DELIMITER //
 
 DROP PROCEDURE IF EXISTS AgregarProveedor;
 CREATE PROCEDURE AgregarProveedor(
-	IN p_Nombre VARCHAR(30), IN p_Contacto VARCHAR(30), IN p_Telefono VARCHAR(13), IN p_Correo VARCHAR(30), IN p_Ciudad INT
+	IN p_Nombre VARCHAR(50), IN p_Contacto VARCHAR(30), IN p_Telefono VARCHAR(13), IN p_Correo VARCHAR(30), IN p_Ciudad INT
 )
 BEGIN
 	INSERT INTO proveedores (nombre, contacto, telefono, correo_electronico, ciudad_id)
@@ -240,12 +245,12 @@ END;
 
 DELIMITER ;
 
-CALL AgregarProveedor('Proveedor6', 'Contacto6', '123456789', 'correo1@example.com', 1);
-CALL AgregarRepuesto('Repuesto7', 'Descripcion7', 100.00, 50, 1);
-CALL ActualizarProveedor(4, 'Proveedor2', 'Contacto2', '987654321', 'correo2@example.com', 2);
-CALL ActualizarRepuesto(4, 'Repuesto2', 'Descripcion2', 150.00, 30, 2);
-CALL EliminarProveedor(4);
-CALL EliminarRepuesto(4);
+CALL AgregarProveedor('Proveedor7', 'Contacto7', '123456781', 'correo7@example.com', 1);
+CALL AgregarRepuesto('Repuesto8', 'Descripcion8', 100.00, 50, 7);
+CALL ActualizarProveedor(7, 'Proveedora7', 'Contacto7', '987654321', 'correo7@example.com', 2);
+CALL ActualizarRepuesto(8, 'Repuesto8', 'Descripcion8', 150.00, 30, 7);
+CALL EliminarProveedor(7);
+CALL EliminarRepuesto(8);
 ```
 ### Caso de uso 1.4: Consulta de Historial de Ventas por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema permite a un usuario consultar el historial de ventas de un cliente específico, mostrando todas las compras realizadas por el cliente y los detalles de cada venta
@@ -253,10 +258,13 @@ CALL EliminarRepuesto(4);
 DELIMITER //
 
 DROP PROCEDURE IF EXISTS ListarVentas;
-CREATE PROCEDURE ListarVentas()
+CREATE PROCEDURE ListarVentas(
+    IN c_id INT
+)
 BEGIN
 	SELECT id,fecha,cliente_id,total
-	FROM ventas;
+	FROM ventas
+    WHERE cliente_id = c_id;
 END;
 //
 
@@ -273,7 +281,7 @@ END;
 
 DELIMITER ;
 
-CALL ListarVentas();
+CALL ListarVentas(1);
 CALL ListarDetallesVenta(1);
 ```
 ### Caso de Uso 1.5: Gestión de Compras de Repuestos
@@ -313,6 +321,10 @@ BEGIN
     SET total = total + (n_precio_unitario * c_Cantidad)
     WHERE id = c_CompraID;
 
+    UPDATE repuestos
+    SET stock = stock + c_Cantidad
+    WHERE id = c_RepuestoID;
+
     SELECT CONCAT('Repuesto agregado a la compra ID ', c_CompraID) AS mensaje;
 END;
 //
@@ -320,7 +332,7 @@ END;
 DELIMITER ;
 
 CALL AgregarCompra(3, '2024-07-23', 500.00);
-CALL AgregarRepuestoACompra(1, 1, 2);
+CALL AgregarRepuestoACompra(10, 1, 2);
 ```
 ## Subconsultas
 ### Caso de Uso 2.1 Consulta de Bicicletas Más Vendidas por Marca
@@ -467,6 +479,8 @@ BEGIN
 END; 
 // 
 DELIMITER ;
+
+CALL VentasPorCiudad();
 ```
 ### Caso de Uso 3.2: Consulta de Proveedores por País
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los proveedores agrupados por país.
@@ -484,6 +498,8 @@ BEGIN
 END;
 //
 DELIMITER ;
+
+CALL ProveedoresPorPais();
 ```
 ### Caso de Uso 3.3: Compras de Repuestos por Proveedor
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar el total de repuestos comprados a cada proveedor.
@@ -500,6 +516,8 @@ BEGIN
 END;
 //
 DELIMITER ;
+
+CALL RepuestosPorProveedor();
 ```
 ### Caso de Uso 3.4: Clientes con Ventas en un Rango de Fechas
 **Descripción:** Este caso de uso describe cómo el sistema permite consultar los clientes que han realizado compras dentro de un rango de fechas específico.
@@ -521,7 +539,7 @@ END;
 //
 DELIMITER ;
 
-CALL VentasEnRango('2024-07-01','2024-07-02');
+CALL VentasEnRango('2020-07-01','2024-07-02');
 ```
 ## Implementar Procedimientos Almacenados
 ### Caso de Uso 4.1: Actualización de Inventario de Bicicletas
@@ -557,58 +575,46 @@ DELIMITER ;
 ```sql
 DELIMITER //
 
-DROP PROCEDURE IF EXISTS CrearVenta;
+DROP PROCEDURE IF EXISTS CrearVentaYDetalles;
 CREATE PROCEDURE CrearVenta(
-    IN v_ClienteID INT
+    IN v_ClienteID INT,
+    IN v_BicicletaID INT,
+    IN v_Cantidad INT
 )
 BEGIN
     DECLARE nueva_venta_id INT;
     DECLARE fecha_venta DATE;
     DECLARE total_venta DECIMAL(10, 2);
+    DECLARE n_precio_unitario DECIMAL(10, 2);
 
     SET fecha_venta = CURDATE();
+
+    SELECT precio INTO n_precio_unitario
+    FROM bicicletas
+    WHERE id = v_BicicletaID;
 
     INSERT INTO ventas (fecha, cliente_id, total)
     VALUES (fecha_venta, v_ClienteID, 0);
 
     SET nueva_venta_id = LAST_INSERT_ID();
 
-    SELECT nueva_venta_id AS venta_id;
-END;
-//
-
-DROP PROCEDURE IF EXISTS AgregarBicicletaVenta;
-CREATE PROCEDURE AgregarBicicletaVenta(
-    IN v_VentaID INT,
-    IN v_BicicletaID INT,
-    IN v_Cantidad INT
-)
-BEGIN
-    DECLARE n_precio_unitario DECIMAL(10, 2);
-
-    SELECT precio INTO n_precio_unitario
-    FROM bicicletas
-    WHERE id = v_BicicletaID;
-
     INSERT INTO detalles_ventas (venta_id, bicicleta_id, cantidad, precio_unitario)
-    VALUES (v_VentaID, v_BicicletaID, v_Cantidad, n_precio_unitario);
+    VALUES (nueva_venta_id, v_BicicletaID, v_Cantidad, n_precio_unitario);
 
     UPDATE ventas
     SET total = total + (n_precio_unitario * v_Cantidad)
-    WHERE id = v_VentaID;
+    WHERE id = nueva_venta_id;
 
-    SELECT CONCAT('Bicicleta agregada a la venta ID ', v_VentaID, ) AS mensaje;
+    UPDATE bicicletas
+    SET stock = stock - v_Cantidad
+    WHERE id = v_BicicletaID;
 
-    UPDATE bicicletas b
-    SET b.stock = b.stock - dv.cantidad_vendida
-    WHERE id = dv.bicicleta_id;
 END;
 //
 
 DELIMITER ;
 
-CALL CrearVenta(1);
-CALL AgregarBicicletaVenta(5, 2, 3);
+CALL CrearVenta(1,1,1);
 ```
 ### Caso de Uso 4.3: Generación de Reporte de Ventas por Cliente
 **Descripción:** Este caso de uso describe cómo el sistema genera un reporte de ventas para un cliente específico, mostrando todas las ventas realizadas por el cliente y los detalles de cada venta.
@@ -639,57 +645,43 @@ DELIMITER //
 
 DROP PROCEDURE IF EXISTS CrearCompra;
 CREATE PROCEDURE CrearCompra(
-    IN c_ProveedorID INT
+    IN c_ProveedorID INT,
+    IN c_RepuestoID INT,
+    IN c_Cantidad INT
 )
 BEGIN
     DECLARE nueva_compra_id INT;
     DECLARE fecha_compra DATE;
     DECLARE total_compra DECIMAL(10, 2);
+    DECLARE n_precio_unitario DECIMAL(10, 2);
 
     SET fecha_compra = CURDATE();
 
     INSERT INTO compras (fecha, proveedor_id, total)
     VALUES (fecha_compra, c_ProveedorID, 0);
 
-    SET nueva_compra_id = LAST_INSERT_ID();
-
-    SELECT nueva_compra_id AS compra_id;
-END;
-//
-
-DROP PROCEDURE IF EXISTS AgregarRepuestoCompra;
-
-CREATE PROCEDURE AgregarRepuestoCompra(
-    IN c_CompraID INT,
-    IN c_RepuestoID INT,
-    IN c_Cantidad INT
-)
-BEGIN
-    DECLARE n_precio_unitario DECIMAL(10, 2);
-
     SELECT precio INTO n_precio_unitario
     FROM repuestos
     WHERE id = c_RepuestoID;
 
+    SET nueva_compra_id = LAST_INSERT_ID();
+
     INSERT INTO detalles_compras (compra_id, repuesto_id, cantidad, precio_unitario)
-    VALUES (c_CompraID, c_RepuestoID, c_Cantidad, n_precio_unitario);
+    VALUES (nueva_compra_id, c_RepuestoID, c_Cantidad, n_precio_unitario);
 
     UPDATE compras
     SET total = total + (n_precio_unitario * c_Cantidad)
-    WHERE id = c_CompraID;
+    WHERE id = nueva_compra_id;
 
     UPDATE repuestos
     SET stock = stock + c_Cantidad
     WHERE id = c_RepuestoID;
-
-    SELECT CONCAT('Repuesto agregado a la compra ID ', c_CompraID) AS mensaje;
 END;
 //
 
 DELIMITER ;
 
-CALL CrearCompra(3);
-CALL AgregarRepuestoCompra(1, 1, 5);
+CALL CrearCompra(3,3,10);
 ```
 ### Caso de Uso 4.5: Generación de Reporte de Inventario
 **Descripción:** Este caso de uso describe cómo el sistema genera un reporte de inventario de bicicletas y repuestos.
@@ -725,9 +717,9 @@ CREATE PROCEDURE ActualizarMasivamentePrecios(
 BEGIN
     IF m_incremento > 0 THEN
         UPDATE bicicletas b
-        JOIN modelos m ON b.modelo = m.id
+        JOIN modelos mo ON b.modelo = mo.id
         SET b.precio = (b.precio * (1 + m_incremento))
-        WHERE m.marca_id = m_MarcaID;
+        WHERE mo.marca_id = m_MarcaID;
     ELSE
         SIGNAL SQLSTATE '45000'
         SET MESSAGE_TEXT = 'El porcentaje de incremento debe ser superior a 0';
@@ -743,6 +735,26 @@ CALL ActualizarMasivamentePrecios(1, 0.1);
 ```
 ### Caso de Uso 4.7: Generación de Reporte de Clientes por Ciudad
 **Descripción:** Este caso de uso describe cómo el sistema genera un reporte de clientes agrupados por ciudad.
+```sql
+DELIMITER //
+
+DROP PROCEDURE IF EXISTS AgruparClientesCiudad;
+CREATE PROCEDURE AgruparClientesCiudad()
+BEGIN
+    SELECT c.nombre, COUNT(cli.id) as CantidadClientes
+    FROM ciudades c
+    JOIN clientes cli ON c.id = cli.ciudad_id
+    GROUP BY c.nombre;
+END;
+//
+
+DELIMITER ;
+
+CALL AgruparClientesCiudad();
+
+```
+### Caso de Uso 4.8: Verificación de Stock antes de Venta
+**Descripción:** Este caso de uso describe cómo el sistema verifica el stock de una bicicleta antes de permitir la venta.
 ```sql
 DELIMITER //
 
@@ -782,6 +794,7 @@ END;
 //
 
 DELIMITER ;
+
 ```
 ### Caso de Uso 4.9: Registro de Devoluciones
 **Descripción:** Este caso de uso describe cómo el sistema registra la devolución de una bicicleta por un cliente.

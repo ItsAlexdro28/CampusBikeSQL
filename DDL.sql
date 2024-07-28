@@ -44,7 +44,7 @@ CREATE TABLE bicicletas (
 CREATE TABLE clientes (
     id int AUTO_INCREMENT, 
     nombre VARCHAR(30) NOT NULL,
-    correo_electronico VARCHAR(50) UNIQUE NOT NULL,
+    correo_electronico VARCHAR(50) UNIQUE NOT NULL CHECK (correo_electronico LIKE '%@%.%'),
     telefono VARCHAR(13) NOT NULL,
     ciudad_id int,
     CONSTRAINT pk_clientes_id PRIMARY KEY (id),
@@ -55,7 +55,7 @@ CREATE TABLE ventas (
     id int AUTO_INCREMENT,
     fecha DATE NOT NULL,
     cliente_id int,
-    total DECIMAL(10, 2) NOT NULL CHECK (total > 0),
+    total DECIMAL(10, 2) NOT NULL CHECK (total >= 0),
     CONSTRAINT pk_ventas_id PRIMARY KEY (id),
     CONSTRAINT fk_ventas_clientes_cliente_id FOREIGN KEY (cliente_id) REFERENCES clientes(id)
 );
@@ -64,7 +64,7 @@ CREATE TABLE detalles_ventas (
     id int AUTO_INCREMENT,
     venta_id int,
     bicicleta_id int,
-    cantidad int NOT NULL CHECK (cantidad > 0),
+    cantidad int NOT NULL CHECK (cantidad >= 0),
     precio_unitario DECIMAL(10, 2) NOT NULL CHECK (precio_unitario > 0),
     CONSTRAINT pk_detalles_ventas_id PRIMARY KEY (id),
     CONSTRAINT fk_detalles_ventas_ventas_venta_id FOREIGN KEY (venta_id) REFERENCES ventas(id),
@@ -76,7 +76,7 @@ CREATE TABLE proveedores (
     nombre VARCHAR(50) NOT NULL,
     contacto VARCHAR(30) NOT NULL,
     telefono VARCHAR(13) NOT NULL,
-    correo_electronico VARCHAR(30) NOT NULL,
+    correo_electronico VARCHAR(30) NOT NULL CHECK (correo_electronico LIKE '%@%.%'),
     ciudad_id int,
     CONSTRAINT pk_proveedores_id PRIMARY KEY (id),
     CONSTRAINT fk_proveedores_ciudades_ciudad_id FOREIGN KEY (ciudad_id) REFERENCES ciudades(id)
@@ -97,7 +97,7 @@ CREATE TABLE compras (
     id int AUTO_INCREMENT,
     fecha DATE NOT NULL,
     proveedor_id int,
-    total DECIMAL(10, 2) NOT NULL CHECK (total > 0),
+    total DECIMAL(10, 2) NOT NULL CHECK (total >= 0),
     CONSTRAINT pk_compras_id PRIMARY KEY (id),
     CONSTRAINT fk_compras_proveedores_proveedor_id FOREIGN KEY (proveedor_id) REFERENCES proveedores(id)
 );
@@ -106,7 +106,7 @@ CREATE TABLE detalles_compras (
     id int AUTO_INCREMENT,
     compra_id int,
     repuesto_id int,
-    cantidad int NOT NULL CHECK (cantidad > 0),
+    cantidad int NOT NULL CHECK (cantidad >= 0),
     precio_unitario DECIMAL(10, 2) NOT NULL CHECK (precio_unitario > 0),
     CONSTRAINT pk_detalles_compras_id PRIMARY KEY (id),
     CONSTRAINT fk_detalles_compras_compras_compra_id FOREIGN KEY (compra_id) REFERENCES compras(id),
